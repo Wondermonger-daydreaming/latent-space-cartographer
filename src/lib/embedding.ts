@@ -26,7 +26,11 @@ export class EmbeddingClient {
     try {
       const transformers = await import('@xenova/transformers');
       const { pipeline } = transformers;
-      this.pipeline = await pipeline('feature-extraction', 'sentence-transformers/all-MiniLM-L6-v2');
+      const extractor = await pipeline(
+        'feature-extraction',
+        'sentence-transformers/all-MiniLM-L6-v2',
+      );
+      this.pipeline = extractor as unknown as TransformersPipeline;
     } catch (error) {
       console.warn('Falling back to pseudo embeddings:', error);
       this.pipeline = undefined;

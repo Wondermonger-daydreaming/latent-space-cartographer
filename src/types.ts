@@ -17,7 +17,7 @@ export type FeatureActivation = {
 export type TopologyNode = {
   id: string;
   label: string;
-  position: [number, number];
+  position: [number, number, number];
   dominantFamily: string;
   color: string;
 };

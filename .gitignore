@@ -23,3 +23,6 @@ build/
 
 # OS
 Thumbs.db
+
+# TypeScript incremental build info
+*.tsbuildinfo
