@@ -2,6 +2,15 @@
 
 Interactive 3D cartography of concept embeddings, entirely in the browser. Enter a handful of text concepts, and the app embeds each one with a neural sentence-encoder running locally via WebAssembly, reduces the embeddings to three dimensions with PCA, and renders the resulting topology as an explorable WebGL scene. No server, no API keys — the embedding model runs on your machine, with a deterministic fallback when it can't be downloaded.
 
+## What's New
+
+This release rebuilt the cartographer to deliver on its name and bring the code, the docs, and the dependency list back into agreement:
+
+- **Real 3D visualization** — the topology was previously a flat 2D SVG despite the "interactive 3D" promise. It's now a genuine **Three.js (WebGL)** scene with orbit/zoom/pan controls, concept spheres colored by feature family, mode-colored edges, floating labels, and hover + click selection.
+- **Correct PCA** — fixed a latent bug where the dimensionality reduction read singular values off the wrong property (`s` instead of `svd-js`'s `q`), which threw at runtime on nearly every compute. PCA now returns true, variance-ordered 3D coordinates (decomposing the transpose so `svd-js`'s `rows ≥ cols` requirement holds).
+- **Honest dependencies & docs** — pruned packages that were declared but never imported (`three` is now genuinely wired up rather than just listed; `d3-force`, Radix, Tailwind, and others were removed), and rewrote this README to describe what the app actually does — no more phantom "D3 force-directed" or "Tailwind" claims.
+- **Tests & CI** — added a [Vitest](https://vitest.dev) unit suite for the core math (PCA, cosine distance, Jaccard overlap, embedding determinism) and a GitHub Actions workflow that runs lint, build, and tests on every push.
+
 ## Features
 
 - **In-browser neural embeddings** — phrases are embedded with [Transformers.js](https://github.com/xenova/transformers.js) (`sentence-transformers/all-MiniLM-L6-v2`, 384-dim) running in the browser. If the model can't load (e.g. offline), the app falls back to a deterministic pseudo-embedding so it still runs.
