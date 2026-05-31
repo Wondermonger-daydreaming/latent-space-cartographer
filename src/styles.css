@@ -132,6 +132,36 @@ button:disabled {
   gap: 1rem;
 }
 
+/* The topology panel must have a real height so the 3D canvas isn't 0px tall;
+   the workspace grid won't otherwise give the panel intrinsic height. */
+.topology-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+}
+
+.topology-3d {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 360px;
+  flex: 1 1 auto;
+}
+
+.topology-3d canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.node-label {
+  font-size: 11px;
+  color: #e2e8f0;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
 .topology-svg {
   width: 100%;
   height: auto;

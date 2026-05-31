@@ -172,12 +172,12 @@ export class CartographerEngine {
     const coords = computePcaCoords(matrix);
 
     return variants.map((variant, idx) => {
-      const [x, y] = coords[idx] ?? [0, 0];
+      const [x, y, z] = coords[idx] ?? [0, 0, 0];
       const dominantFamily = variant.features[0]?.familyLabel ?? 'Unknown';
       return {
         id: `${variant.conceptId}-${variant.variant}-${idx}`,
         label: variant.displayLabel,
-        position: [x, y],
+        position: [x, y, z],
         dominantFamily,
         color: FAMILY_COLORS[dominantFamily] ?? '#94a3b8',
       };
@@ -238,10 +238,11 @@ export class CartographerEngine {
   }
 }
 
-function computePcaCoords(matrix: number[][]) {
+export function computePcaCoords(matrix: number[][]): number[][] {
   if (!matrix.length) return [];
-  if (matrix.length === 1) return [[0, 0]];
+  if (matrix.length === 1) return [[0, 0, 0]];
 
+  const rows = matrix.length;
   const dims = matrix[0].length;
   const means = new Array(dims).fill(0);
   matrix.forEach((row) => {
@@ -250,32 +251,48 @@ function computePcaCoords(matrix: number[][]) {
     });
   });
   for (let i = 0; i < dims; i++) {
-    means[i] /= matrix.length;
+    means[i] /= rows;
   }
 
+  // centered is N×D (N variants, D embedding dims).
   const centered = matrix.map((row) => row.map((value, idx) => value - means[idx]));
-  const { v } = SVD(centered);
-  const projected = multiplyMatrices(centered, v);
-  return projected.map((row) => [row[0] ?? 0, row[1] ?? 0]);
+
+  // svd-js requires rows >= cols, so decompose the transpose (D×N, D >= N).
+  // SVD(centeredᵀ) = { u, q, v } with centeredᵀ = U·Σ·Vᵀ (singular values on `q`).
+  // Therefore centered = V·Σ·Uᵀ, so the PCA scores are scores[i][k] = v[i][k] * q[k].
+  const transposed = transpose(centered);
+  const { q, v } = SVD(transposed);
+  // svd-js does not guarantee singular values are sorted; take the top-3 by magnitude.
+  const order = q
+    .map((value, index) => ({ value, index }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 3)
+    .map((entry) => entry.index);
+
+  const scores: number[][] = [];
+  for (let i = 0; i < rows; i++) {
+    scores.push([
+      (v[i]?.[order[0]] ?? 0) * (q[order[0]] ?? 0),
+      (v[i]?.[order[1]] ?? 0) * (q[order[1]] ?? 0),
+      (v[i]?.[order[2]] ?? 0) * (q[order[2]] ?? 0),
+    ]);
+  }
+  return scores;
 }
 
-function multiplyMatrices(a: number[][], b: number[][]) {
-  const rows = a.length;
-  const cols = b[0]?.length ?? 0;
-  const shared = b.length;
-  const result = Array.from({ length: rows }, () => new Array(cols).fill(0));
+export function transpose(m: number[][]): number[][] {
+  const rows = m.length;
+  const cols = m[0]?.length ?? 0;
+  const result = Array.from({ length: cols }, () => new Array(rows).fill(0));
   for (let i = 0; i < rows; i++) {
-    for (let k = 0; k < shared; k++) {
-      const val = a[i][k] ?? 0;
-      for (let j = 0; j < cols; j++) {
-        result[i][j] += val * (b[k]?.[j] ?? 0);
-      }
+    for (let j = 0; j < cols; j++) {
+      result[j][i] = m[i][j] ?? 0;
     }
   }
   return result;
 }
 
-function cosineDistance(a: Float32Array, b: Float32Array) {
+export function cosineDistance(a: Float32Array, b: Float32Array) {
   let dot = 0;
   let normA = 0;
   let normB = 0;
@@ -289,14 +306,14 @@ function cosineDistance(a: Float32Array, b: Float32Array) {
   return 1 - cosine;
 }
 
-function jaccardIndex(a: Set<string>, b: Set<string>) {
+export function jaccardIndex(a: Set<string>, b: Set<string>) {
   if (!a.size && !b.size) return 1;
   const intersection = intersectSets(a, b);
   const union = new Set([...a, ...b]);
   return intersection.size / union.size;
 }
 
-function intersectSets<T>(a: Set<T>, b: Set<T>) {
+export function intersectSets<T>(a: Set<T>, b: Set<T>) {
   const intersection = new Set<T>();
   for (const item of a) {
     if (b.has(item)) {
@@ -306,7 +323,7 @@ function intersectSets<T>(a: Set<T>, b: Set<T>) {
   return intersection;
 }
 
-function intersectAll<T>(sets: Array<Set<T>>) {
+export function intersectAll<T>(sets: Array<Set<T>>) {
   if (!sets.length) return new Set<T>();
   return sets.reduce((acc, curr) => {
     const next = new Set<T>();
